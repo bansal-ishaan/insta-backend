@@ -76,6 +76,7 @@ The feed only shows:
 ---
 
 ## 🗂️ Project Structure
+
 src/
 ├── controllers/
 │   ├── user.controller.js
@@ -148,8 +149,6 @@ CLOUDINARY_API_SECRET=your_secret
 npm install
 npm run dev
 
-nginx
-Copy code
 
 Server will start on:
 
