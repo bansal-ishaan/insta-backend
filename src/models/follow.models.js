@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 const followSchema = new mongoose.Schema(
   {
     // User who sent the follow request
-    requester: {
+    follower: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
     // User who receives the request
-    recipient: {
+    following: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -28,6 +28,6 @@ const followSchema = new mongoose.Schema(
 );
 
 // Prevent duplicate follow entries
-followSchema.index({ requester: 1, recipient: 1 }, { unique: true });
+followSchema.index({ follower: 1, following: 1 }, { unique: true });
 
 export const Follow = mongoose.model("Follow", followSchema);

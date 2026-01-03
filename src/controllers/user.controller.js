@@ -74,11 +74,8 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  res.json(
-    new ApiResponse(200, {}, "Password changed successfully")
-  );
+  res.json(new ApiResponse(200, {}, "Password changed successfully"));
 });
-
 
 // ========================= REGISTER =========================
 
@@ -151,8 +148,9 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid credentials");
   }
 
-  const { accessToken, refreshToken } =
-    await generateAccessAndRefreshTokens(user._id);
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
 
   const safeUser = await User.findById(user._id).select(
     "-password -refreshToken"
@@ -168,11 +166,7 @@ const loginUser = asyncHandler(async (req, res) => {
     .status(200)
     .cookie("refreshToken", refreshToken, cookieOptions)
     .json(
-      new ApiResponse(
-        200,
-        { user: safeUser, accessToken },
-        "Login successful"
-      )
+      new ApiResponse(200, { user: safeUser, accessToken }, "Login successful")
     );
 });
 
@@ -197,18 +191,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Refresh token missing");
   }
 
-  const decoded = jwt.verify(
-    incomingToken,
-    process.env.REFRESH_TOKEN_SECRET
-  );
+  const decoded = jwt.verify(incomingToken, process.env.REFRESH_TOKEN_SECRET);
 
   const user = await User.findById(decoded._id);
   if (!user || user.refreshToken !== incomingToken) {
     throw new ApiError(401, "Invalid refresh token");
   }
 
-  const { accessToken, refreshToken } =
-    await generateAccessAndRefreshTokens(user._id);
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
 
   res
     .cookie("refreshToken", refreshToken, {
@@ -224,25 +216,26 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 // ========================= GET CURRENT USER =========================
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-  res.json(
-    new ApiResponse(200, req.user, "Current user fetched successfully")
-  );
+  res.json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
 
 // ========================= UPDATE PROFILE =========================
 
 const updateProfile = asyncHandler(async (req, res) => {
-  const { bio } = req.body;
+  const { bio, isPrivate } = req.body;
+
+  const updates = {};
+
+  if (bio !== undefined) updates.bio = bio;
+  if (isPrivate !== undefined) updates.isPrivate = isPrivate;
 
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    { $set: { bio } },
+    { $set: updates },
     { new: true }
   ).select("-password -refreshToken");
 
-  res.json(
-    new ApiResponse(200, user, "Profile updated successfully")
-  );
+  res.json(new ApiResponse(200, user, "Profile updated successfully"));
 });
 
 // ========================= UPDATE PROFILE PICTURE =========================
@@ -262,9 +255,7 @@ const updateProfilePicture = asyncHandler(async (req, res) => {
     $set: { profilePicture: uploaded.url },
   });
 
-  res.json(
-    new ApiResponse(200, {}, "Profile picture updated")
-  );
+  res.json(new ApiResponse(200, {}, "Profile picture updated"));
 });
 
 // ========================= FOLLOW USER =========================
@@ -284,8 +275,8 @@ const followUser = asyncHandler(async (req, res) => {
   const status = targetUser.isPrivate ? "pending" : "accepted";
 
   await Follow.create({
-    requester: req.user._id,
-    recipient: targetUserId,
+    follower: req.user._id,
+    following: targetUserId,
     status,
   });
 
@@ -303,12 +294,12 @@ const followUser = asyncHandler(async (req, res) => {
 // ========================= ACCEPT FOLLOW REQUEST =========================
 
 const acceptFollowRequest = asyncHandler(async (req, res) => {
-  const requesterId = req.params.userId;
+  const followerId = req.params.userId;
 
   const follow = await Follow.findOneAndUpdate(
     {
-      requester: requesterId,
-      recipient: req.user._id,
+      follower: followerId,
+      following: req.user._id,
       status: "pending",
     },
     { status: "accepted" },
@@ -322,14 +313,37 @@ const acceptFollowRequest = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, {}, "Follow request accepted"));
 });
 
+/*
+========================================
+GET PUBLIC USER PROFILE BY USERNAME
+========================================
+*/
+const getUserProfileByUsername = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(400, "Username is required");
+  }
+
+  const user = await User.findOne({
+    username: username.toLowerCase(),
+  }).select("-password -refreshToken -email");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.status(200).json(new ApiResponse(200, user, "User profile fetched"));
+});
+
 // ========================= UNFOLLOW =========================
 
 const unfollowUser = asyncHandler(async (req, res) => {
   const targetUserId = req.params.userId;
 
   await Follow.findOneAndDelete({
-    requester: req.user._id,
-    recipient: targetUserId,
+    follower: req.user._id,
+    following: targetUserId,
   });
 
   res.json(new ApiResponse(200, {}, "Unfollowed successfully"));
@@ -344,9 +358,10 @@ export {
   refreshAccessToken,
   getCurrentUser,
   updateProfile,
+  getUserProfileByUsername,
   updateProfilePicture,
   followUser,
   acceptFollowRequest,
   changeCurrentPassword,
-  unfollowUser
+  unfollowUser,
 };

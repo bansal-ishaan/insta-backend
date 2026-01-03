@@ -71,6 +71,11 @@ import postRouter from "./routes/post.routes.js";
 
 app.use("/api/v1/posts", postRouter);
 
+import followRouter from "./routes/follow.routes.js";
+
+app.use("/api/v1/follow", followRouter);
+
+
 /* -------------------- EXPORT APP -------------------- */
 
 // Export the configured app

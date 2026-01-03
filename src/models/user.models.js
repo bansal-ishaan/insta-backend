@@ -7,20 +7,24 @@ import jwt from "jsonwebtoken";
 // Import bcrypt for password hashing & comparison
 import bcrypt from "bcrypt";
 
-// Define User schema (structure of user documents)
+/*
+========================================
+USER SCHEMA (INSTAGRAM-LIKE)
+========================================
+*/
 const userSchema = new mongoose.Schema(
   {
-    // Unique username for the user
+    // Unique username (public identity)
     username: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
-      index: true, // faster search
+      index: true,
     },
 
-    // User email (used for login)
+    // Email (used for login)
     email: {
       type: String,
       required: true,
@@ -30,98 +34,85 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Full name of the user
+    // Optional full name
     fullName: {
       type: String,
-      required: true,
       trim: true,
-      index: true,
+      default: "",
     },
 
-    // Cloudinary URL for avatar image
-    avatar: {
+    // Instagram-style profile picture
+    profilePicture: {
       type: String,
-      required: true,
+      default: "",
     },
 
-    // Optional cover image URL
-    coverImage: {
+    // Short bio
+    bio: {
       type: String,
+      maxlength: 150,
+      default: "",
     },
 
-    // Watch history references Video documents
-    watchHistory: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Video",
-      },
-    ],
-
-    // Hashed password (never store plain password)
+    // Hashed password
     password: {
       type: String,
-      required: [true, "Password is required"],
-      select: false, // do not return password by default
+      required: true,
+      select: false, // never return password by default
     },
 
-    // Stores the latest valid refresh token
+    // Refresh token storage
     refreshToken: {
       type: String,
     },
+
+    // Private account toggle
+    isPrivate: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
-    timestamps: true, // adds createdAt & updatedAt
+    timestamps: true, // createdAt & updatedAt
   }
 );
 
-/* -------------------- PRE-SAVE HOOK -------------------- */
+/* ================= PASSWORD HASH ================= */
 
-// Hash password before saving user to database
-userSchema.pre("save", async function (next) {
-  // If password is not modified, skip hashing
-  if (!this.isModified("password")) return next();
+// Hash password before saving
+userSchema.pre("save", async function () {
+  // If password is not modified, do nothing
+  if (!this.isModified("password")) return;
 
-  // Hash the password with salt rounds
+  // Hash password
   this.password = await bcrypt.hash(this.password, 10);
-
-  next();
 });
 
-/* -------------------- SCHEMA METHODS -------------------- */
+
+/* ================= METHODS ================= */
 
 // Compare input password with hashed password
 userSchema.methods.isPasswordCorrect = async function (password) {
   return bcrypt.compare(password, this.password);
 };
 
-// Generate short-lived access token
+// Generate access token
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
-    {
-      _id: this._id,
-      username: this.username,
-      email: this.email,
-    },
+    { _id: this._id },
     process.env.ACCESS_TOKEN_SECRET,
-    {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
-    }
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
   );
 };
 
-// Generate long-lived refresh token
+// Generate refresh token
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
-    {
-      _id: this._id,
-    },
+    { _id: this._id },
     process.env.REFRESH_TOKEN_SECRET,
-    {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-    }
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
   );
 };
 
 // Export User model
-// Used throughout controllers for DB operations
 export const User = mongoose.model("User", userSchema);

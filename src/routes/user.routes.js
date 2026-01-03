@@ -1,88 +1,73 @@
-// Import Router from express to create modular routes
+// Import Router from express
 import { Router } from "express";
 
-// Import all user-related controllers
+// User controllers
 import {
   registerUser,
   loginUser,
   refreshAccessToken,
   logoutUser,
   changeCurrentPassword,
-  updateAccountDetails,
+  updateProfile,
   getCurrentUser,
-  updateUserAvatar,
-  updateUserCoverImage,
-  getUserChannelProfile,
-  getWatchHistory,
+  updateProfilePicture,
+  getUserProfileByUsername,
 } from "../controllers/user.controller.js";
 
-// Import multer upload middleware for file handling
+// Multer middleware
 import { upload } from "../middlewares/multer.middleware.js";
 
-// Import JWT verification middleware
+// Auth middleware
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
-// Create a router instance
 const router = Router();
 
-/* -------------------- PUBLIC ROUTES -------------------- */
+/* ========================================
+   AUTH & PUBLIC ROUTES
+======================================== */
 
-// Register new user with avatar and cover image upload
-router.route("/register").post(
-  upload.fields([
-    { name: "avatar", maxCount: 1 },      // avatar image
-    { name: "coverImage", maxCount: 1 },  // cover image
-  ]),
+// Register new user (with profile picture)
+router.post(
+  "/register",
+  upload.single("profilePicture"), // Instagram-style
   registerUser
 );
 
-// Login user (email/username + password)
-router.route("/login").post(loginUser);
+// Login user
+router.post("/login", loginUser);
 
-// Refresh access token using refresh token cookie
-router.route("/refresh-token").post(refreshAccessToken);
+// Refresh access token
+router.post("/refresh-token", refreshAccessToken);
 
-/* -------------------- PROTECTED ROUTES -------------------- */
+/* ========================================
+   PROTECTED ROUTES (AUTH REQUIRED)
+======================================== */
 
-// Logout current user
-router.route("/logout").post(verifyJWT, logoutUser);
+// Logout user
+router.post("/logout", verifyJWT, logoutUser);
 
-// Change current user's password
-router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+// Change password
+router.post("/change-password", verifyJWT, changeCurrentPassword);
 
-// Get current logged-in user details
-router.route("/current-user").get(verifyJWT, getCurrentUser);
+// Get current logged-in user
+router.get("/current-user", verifyJWT, getCurrentUser);
 
-// Update account details (name, email, etc.)
-router.route("/update-account").patch(verifyJWT, updateAccountDetails);
+// Update profile (name, bio)
+router.patch("/update-profile", verifyJWT, updateProfile);
 
-// Update user avatar image
-router
-  .route("/avatar")
-  .patch(
-    verifyJWT,                  // ensure user is authenticated
-    upload.single("avatar"),    // upload single avatar image
-    updateUserAvatar
-  );
+// Update profile picture
+router.patch(
+  "/profile-picture",
+  verifyJWT,
+  upload.single("profilePicture"),
+  updateProfilePicture
+);
 
-// Update user cover image
-router
-  .route("/cover-image")
-  .patch(
-    verifyJWT,                      // ensure user is authenticated
-    upload.single("coverImage"),    // upload single cover image
-    updateUserCoverImage
-  );
+/* ========================================
+   PUBLIC USER PROFILE
+======================================== */
 
-// Get watch history of current user
-router.route("/watch-history").get(verifyJWT, getWatchHistory);
+// Get public user profile by username
+router.get("/user/:username", getUserProfileByUsername);
 
-/* -------------------- PUBLIC PROFILE ROUTES -------------------- */
-
-// Get a user's public channel/profile by username
-router.route("/channel/:username").get(getUserChannelProfile);
-
-/* -------------------- EXPORT ROUTER -------------------- */
-
-// Export router to be mounted in app.js
 export default router;

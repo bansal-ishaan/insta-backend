@@ -1,14 +1,13 @@
 import mongoose from "mongoose";
 
 /*
-  Comment Schema
-  Each comment belongs to:
-  - a user
-  - a post
+========================================
+COMMENT SUB-SCHEMA
+========================================
 */
 const commentSchema = new mongoose.Schema(
   {
-    // User who wrote the comment
+    // User who commented
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -19,37 +18,38 @@ const commentSchema = new mongoose.Schema(
     text: {
       type: String,
       required: true,
-      maxlength: 500,
+      trim: true,
     },
   },
   {
-    timestamps: true, // createdAt & updatedAt for comments
+    timestamps: true, // createdAt for comment
   }
 );
 
 /*
-  Post Schema
-  Represents a single Instagram-like post
+========================================
+POST SCHEMA
+========================================
 */
 const postSchema = new mongoose.Schema(
   {
-    // Image or video URL (Cloudinary)
+    // Image / video URL (Cloudinary)
     mediaUrl: {
       type: String,
       required: true,
     },
 
-    // Type of media
+    // image | video
     mediaType: {
       type: String,
       enum: ["image", "video"],
       required: true,
     },
 
-    // Caption text (AI-assisted or manual)
+    // Caption text
     caption: {
       type: String,
-      maxlength: 2200,
+      trim: true,
       default: "",
     },
 
@@ -58,9 +58,10 @@ const postSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
-    // Users who liked the post
+    // Likes (array of user IDs)
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -68,7 +69,7 @@ const postSchema = new mongoose.Schema(
       },
     ],
 
-    // Embedded comments
+    // Comments
     comments: [commentSchema],
 
     // Soft delete flag
@@ -78,9 +79,20 @@ const postSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // createdAt & updatedAt for posts
+    timestamps: true, // createdAt & updatedAt
   }
 );
 
-// Export Post model
+/*
+========================================
+INDEXES (PERFORMANCE)
+========================================
+*/
+postSchema.index({ owner: 1, createdAt: -1 });
+
+/*
+========================================
+EXPORT MODEL
+========================================
+*/
 export const Post = mongoose.model("Post", postSchema);

@@ -1,7 +1,11 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+
 import { Post } from "../models/post.models.js";
+import { Follow } from "../models/follow.models.js";
+import { User } from "../models/user.models.js";
+
 import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 
 /*
@@ -12,24 +16,20 @@ CREATE POST
 const createPost = asyncHandler(async (req, res) => {
   const { caption, mediaType } = req.body;
 
-  // Media file is mandatory
   const mediaLocalPath = req.file?.path;
   if (!mediaLocalPath) {
     throw new ApiError(400, "Post media is required");
   }
 
-  // Validate media type
   if (!["image", "video"].includes(mediaType)) {
     throw new ApiError(400, "Invalid media type");
   }
 
-  // Upload media to Cloudinary
   const uploadedMedia = await uploadOnCloudinary(mediaLocalPath);
   if (!uploadedMedia) {
     throw new ApiError(500, "Media upload failed");
   }
 
-  // Create post in DB
   const post = await Post.create({
     mediaUrl: uploadedMedia.url,
     mediaType,
@@ -44,7 +44,67 @@ const createPost = asyncHandler(async (req, res) => {
 
 /*
 ========================================
-GET FEED POSTS (LATEST FIRST)
+GET USER PROFILE POSTS (PRIVACY SAFE)
+========================================
+*/
+const getUserProfilePosts = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  // 1️⃣ Check target user
+  const targetUser = await User.findById(userId);
+  if (!targetUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const viewerId = req.user._id.toString();
+  const targetId = targetUser._id.toString();
+
+  // 2️⃣ Decide access
+  let canView = false;
+
+  // Same user
+  if (viewerId === targetId) {
+    canView = true;
+  }
+
+  // Public account
+  if (!targetUser.isPrivate) {
+    canView = true;
+  }
+
+  // Private account → check accepted follow
+  if (!canView && targetUser.isPrivate) {
+    const isFollower = await Follow.exists({
+      follower: viewerId,
+      following: targetId,
+      status: "accepted",
+    });
+
+    if (isFollower) {
+      canView = true;
+    }
+  }
+
+  if (!canView) {
+    throw new ApiError(403, "This account is private");
+  }
+
+  // 3️⃣ Fetch posts
+  const posts = await Post.find({
+    owner: targetId,
+    isDeleted: false,
+  })
+    .sort({ createdAt: -1 })
+    .populate("owner", "username profilePicture");
+
+  res.status(200).json(
+    new ApiResponse(200, posts, "Profile posts fetched successfully")
+  );
+});
+
+/*
+========================================
+GET FEED POSTS (PRIVACY + FOLLOW LOGIC)
 ========================================
 */
 const getFeedPosts = asyncHandler(async (req, res) => {
@@ -52,8 +112,31 @@ const getFeedPosts = asyncHandler(async (req, res) => {
   const limit = 10;
   const skip = (page - 1) * limit;
 
-  const posts = await Post.find({ isDeleted: false })
-    .sort({ createdAt: -1 }) // latest first
+  // 1️⃣ People I follow (accepted)
+  const followingDocs = await Follow.find({
+    follower: req.user._id,
+    status: "accepted",
+  }).select("following");
+
+  const followingIds = followingDocs.map((f) => f.following);
+
+  // 2️⃣ Public users
+  const publicUsers = await User.find({ isPrivate: false }).select("_id");
+  const publicUserIds = publicUsers.map((u) => u._id);
+
+  // 3️⃣ Allowed owners
+  const allowedOwners = [
+    req.user._id,
+    ...followingIds,
+    ...publicUserIds,
+  ];
+
+  // 4️⃣ Fetch feed posts
+  const posts = await Post.find({
+    owner: { $in: allowedOwners },
+    isDeleted: false,
+  })
+    .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .populate("owner", "username profilePicture")
@@ -66,7 +149,7 @@ const getFeedPosts = asyncHandler(async (req, res) => {
 
 /*
 ========================================
-LIKE / UNLIKE POST (TOGGLE)
+LIKE / UNLIKE POST
 ========================================
 */
 const likeOrUnlikePost = asyncHandler(async (req, res) => {
@@ -78,14 +161,11 @@ const likeOrUnlikePost = asyncHandler(async (req, res) => {
   }
 
   const userId = req.user._id;
-
   const alreadyLiked = post.likes.includes(userId);
 
   if (alreadyLiked) {
-    // Unlike
     post.likes.pull(userId);
   } else {
-    // Like
     post.likes.push(userId);
   }
 
@@ -102,7 +182,7 @@ const likeOrUnlikePost = asyncHandler(async (req, res) => {
 
 /*
 ========================================
-ADD COMMENT TO POST
+ADD COMMENT
 ========================================
 */
 const addComment = asyncHandler(async (req, res) => {
@@ -143,7 +223,6 @@ const deletePost = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Post not found");
   }
 
-  // Only owner can delete
   if (post.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You are not allowed to delete this post");
   }
@@ -158,12 +237,13 @@ const deletePost = asyncHandler(async (req, res) => {
 
 /*
 ========================================
-EXPORTS
+EXPORTS (IMPORTANT)
 ========================================
 */
 export {
   createPost,
   getFeedPosts,
+  getUserProfilePosts,
   likeOrUnlikePost,
   addComment,
   deletePost,
