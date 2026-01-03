@@ -109,9 +109,6 @@ src/
 ├─ app.js
 └─ index.js
 
-yaml
-Copy code
-
 ---
 
 ## 🛠️ Tech Stack
@@ -144,9 +141,6 @@ CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_key
 CLOUDINARY_API_SECRET=your_secret
 
-yaml
-Copy code
-
 ---
 
 ## ▶️ Run Locally
@@ -161,8 +155,6 @@ Server will start on:
 
 http://localhost:8000
 
-yaml
-Copy code
 
 ---
 
