@@ -76,38 +76,38 @@ The feed only shows:
 ---
 
 ## 🗂️ Project Structure
-
 src/
-├─ controllers/
-│ ├─ user.controller.js
-│ ├─ follow.controller.js
-│ ├─ post.controller.js
-│ └─ story.controller.js
+├── controllers/
+│   ├── user.controller.js
+│   ├── follow.controller.js
+│   ├── post.controller.js
+│   └── story.controller.js
 │
-├─ models/
-│ ├─ user.models.js
-│ ├─ follow.models.js
-│ ├─ post.models.js
-│ └─ story.models.js
+├── models/
+│   ├── user.models.js
+│   ├── follow.models.js
+│   ├── post.models.js
+│   └── story.models.js
 │
-├─ routes/
-│ ├─ user.routes.js
-│ ├─ follow.routes.js
-│ ├─ post.routes.js
-│ └─ story.routes.js
+├── routes/
+│   ├── user.routes.js
+│   ├── follow.routes.js
+│   ├── post.routes.js
+│   └── story.routes.js
 │
-├─ middlewares/
-│ ├─ auth.middleware.js
-│ └─ multer.middleware.js
+├── middlewares/
+│   ├── auth.middleware.js
+│   └── multer.middleware.js
 │
-├─ utils/
-│ ├─ ApiError.js
-│ ├─ ApiResponse.js
-│ ├─ asyncHandler.js
-│ └─ Cloudinary.js
+├── utils/
+│   ├── ApiError.js
+│   ├── ApiResponse.js
+│   ├── asyncHandler.js
+│   └── Cloudinary.js
 │
-├─ app.js
-└─ index.js
+├── app.js
+└── index.js
+
 
 ---
 
